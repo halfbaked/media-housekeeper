@@ -6,3 +6,7 @@ mkdir sampleMedia
 touch sampleMedia/mypic.jpg
 touch sampleMedia/mytune.mp3
 touch sampleMedia/mymovie.divx
+
+mkdir music
+mkdir movies
+mkdir pics
