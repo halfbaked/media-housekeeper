@@ -13,12 +13,13 @@ organise_files_in_directory (Dir) ->
 organise_files_in_directory (Dir, [File|Rest]) ->
     
     FullName = filename:join([Dir, File]),
-   
+    io:format("file ~p found~n",[FullName]),
     case file_type(FullName) of 
         regular ->
                 case regexp:match(FullName, regexp:sh_to_awk("*.mp3")) of
                     {match, _, _} ->
-                        moveTrack(FullName),    
+                        moveTrack(FullName),
+                        file:delete(FullName),    
                         organise_files_in_directory(Dir, Rest);                
                     _ ->
                         organise_files_in_directory(Dir, Rest)
@@ -26,7 +27,9 @@ organise_files_in_directory (Dir, [File|Rest]) ->
         directory ->
                 organise_files_in_directory(FullName),
                 organise_files_in_directory(Dir,Rest)
-    end.
+    end;
+
+organise_files_in_directory (_, []) ->    [].
 
 file_type (File) ->
     case file:read_file_info(File) of
@@ -53,11 +56,13 @@ move({pics, File}) ->
     file:copy(File, ["pics/",File]),
     file:delete(File).
 
-determineFolderAndFileNames({Id3Type,
+determineFolderAndFileNames({_,
                             {position, Position},
                             {title, Title},
                             {artist, Artist},
                             {album, Album}}) ->
+    io:format("getting to here"),
+    io:format("determining folder and file names for track: ~p by artist ~p with position ~p on album ~p~n",[Title,Artist,Position,Album]),
     FileName = lists:append([camelCase(Title),"-",integer_to_string(Position),".mp3"]),
     Dir = lists:append(["music", "/", camelCase(Artist),"/",camelCase(Album),"/"]),
     {Dir, FileName}.
@@ -71,24 +76,6 @@ decapitalize([H|T]) ->
 
 capitalize([H|T]) ->
     [string:to_upper(H)|T].
-
-% determine folder structure, for every element of folder structure check for directory
-% if no directory, make one.
-% then make file as last element in directory
-% filelib:ensure_dir("/this/path/will/soon/exist").
-       
-extractTrackDetails(Track) ->
-    % if no id3 values, read file name, 
-    % and folder name to determine track details
-    
-    {track,         
-        {type, "mp3"},
-        {position, "1"},
-        {trackName, "How To Behave"},
-        {artist, "Iron Maiden"},
-        {album, "Death of the fair maiden"},
-        {genre, "hard-rock"}
-    }.
 
 read_id3_tag(File) ->
     case file:open(File, [read,binary,raw]) of 
@@ -117,12 +104,12 @@ parse_v1_tag(<<$T,$A,$G,
     Title:30/binary, Artist:30/binary, Album:30/binary, _Year:4/binary,
     _Comment:30/binary,_Genre:8>>) ->
     {"ID3v1",
-            [{title, extract_string_from_binary(Title)}, 
+            {{title, extract_string_from_binary(Title)}, 
             {artist, extract_string_from_binary(Artist)}, 
-            {album, extract_string_from_binary(Album)}]};
+            {album, extract_string_from_binary(Album)}}};
 
 parse_v1_tag(_) ->
-    error.
+    {error, "No suitable id3 tag found"}.
 
 % A segment of binary that refers to an element of a protocol/format
 % is likely to have not been fully utilised. Consequently the excess void
@@ -143,11 +130,11 @@ integer_to_string(Integer) ->
          3 -> "3";
          4 -> "4";
          5 -> "5";
-         6 -> $6;
-         7 -> $7; 
-         8 -> $8;
-         9 -> $9;
-         _ -> $a
+         6 -> "6";
+         7 -> "7"; 
+         8 -> "8";
+         9 -> "9";
+         _ -> "a"
     end.
                     
 
